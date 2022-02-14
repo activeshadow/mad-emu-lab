@@ -1,0 +1,43 @@
+apiVersion: phenix.sandia.gov/v1
+kind: Experiment
+metadata:
+  name: mad-emu
+spec:
+  topology:
+    nodes:
+    - type: VirtualMachine
+      annotations:
+        includes-phenix-startup: true
+      general:
+        hostname: targetDC
+      hardware:
+        drives:
+        - image: mad-emu-dc.qc2
+        memory: 4096
+        vcpus: 2
+        os_type: windows
+      network:
+        interfaces:
+        - name: IF0
+          type: ethernet
+          proto: static
+          address: 192.168.11.250
+          mask: 24
+          vlan: EXP
+    - type: VirtualMachine
+      general:
+        hostname: attackerVM
+      hardware:
+        drives:
+        - image: mad-emu-kali.qc2
+        memory: 4096
+        vcpus: 2
+        os_type: linux
+      network:
+        interfaces:
+        - name: IF0
+          type: ethernet
+          proto: static
+          address: 192.168.11.10
+          mask: 24
+          vlan: EXP

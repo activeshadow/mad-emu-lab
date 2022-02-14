@@ -1,0 +1,101 @@
+{
+  "_comment": "Build with `packer build packer.json`",
+  "builders": [
+    {
+      "boot_wait": "2s",
+      "communicator": "winrm",
+      "disk_size": "{{ user `disk_size` }}",
+      "floppy_files": "{{ user `floppy_files_list` }}",
+      "cd_files": "{{ user `cd_files_list` }}",
+      "headless": "{{ user `headless` }}",
+      "iso_checksum": "{{ user `iso_checksum` }}",
+      "iso_urls": [
+        "{{ user `iso_url` }}"
+      ],
+      "output_directory": "output-{{ user `vm_name` }}",
+      "qemuargs": [
+        [
+          "-m",
+          "{{ user `memory` }}"
+        ],
+        [
+          "-smp",
+          "cpus={{ user `cpus`}}"
+        ],
+        [
+          "-cpu",
+          "Broadwell"
+        ]
+      ],
+      "shutdown_command": "shutdown /s /t 10 /f /d p:4:1",
+      "shutdown_timeout": "60m",
+      "type": "qemu",
+      "vm_name": "{{ user `vm_name` }}",
+      "winrm_username": "vagrant",
+      "winrm_password": "vagrant",
+      "winrm_timeout": "10000s"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "scripts/phenix/phenix-startup.ps1",
+      "destination": "/phenix/phenix-startup.ps1"
+    },
+    {
+      "type": "windows-shell",
+      "inline": "schtasks.exe /create /sc onstart /ru SYSTEM /tn phenix-startup /tr \"powershell.exe -ep bypass C:\\phenix\\phenix-startup.ps1 > C:\\phenix\\phenix-startup.log\" /f"
+    },
+    {
+      "type": "file",
+      "source": "scripts/mad/",
+      "destination": "/Users/Public"
+    },
+    {
+      "type": "powershell",
+      "inline": "powershell -ep bypass /Users/Public/firewall-allow-ftp.ps1"
+    },
+    {
+      "type": "powershell",
+      "inline": "powershell -ep bypass /Users/Public/install-tools.ps1"
+    },
+    {
+      "type": "powershell",
+      "inline": "powershell -ep bypass /Users/Public/create-domain.ps1"
+    },
+    {
+      "type": "windows-restart"
+    },
+    {
+      "type": "powershell",
+      "inline": "powershell -ep bypass /Users/Public/add-domain-entities.ps1"
+    },
+    {
+      "type": "powershell",
+      "inline": "Set-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name 'DefaultDomainName' -Type String -Value 'MAD'"
+    },
+    {
+      "type": "powershell",
+      "inline": "Set-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name 'DefaultUserName' -Type String -Value 'madAdmin'"
+    },
+    {
+      "type": "powershell",
+      "inline": "Set-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name 'DefaultPassword' -Type String -Value 'ATT&CK'"
+    },
+    {
+      "type": "windows-restart"
+    }
+  ],
+  "variables": {
+    "cpus": "2",
+    "disk_size": "40960",
+    "floppy_files_list": "answers/Autounattend.xml,scripts/Disable-WindowsDefender.ps1,scripts/Disable-WindowsUpdates.ps1",
+    "cd_files_list": "drivers/virtio-win-0.1.171/NetKVM/2k19/amd64/*,drivers/virtio-win-0.1.171/vioserial/2k19/amd64/*,drivers/virtio-win-0.1.171/viostor/2k19/amd64/*,apps/miniccc.exe",
+    "headless": "false",
+    "iso_checksum": "none",
+    "iso_url": "https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso",
+    "memory": "4096",
+    "vm_name": "mad-emu-dc"
+  }
+}
+

@@ -1,0 +1,92 @@
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: mad-emu-kali
+spec:
+  compress: true
+  deb_append: ' --components=main,contrib,non-free'
+  format: qcow2
+  mirror: http://http.kali.org/kali
+  packages:
+  - curl
+  - dbus
+  - ifupdown
+  - init
+  - initramfs-tools
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-amd64
+  - linux-image-amd64
+  - net-tools
+  - netbase
+  - openssh-server
+  - vim
+  - xserver-xorg
+  release: kali
+  script_order:
+  - POSTBUILD_MAD_KALI
+  - POSTBUILD_APT_CLEANUP
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  scripts:
+    POSTBUILD_MAD_KALI: |
+      export DEBIAN_FRONTEND=noninteractive
+      apt install -y git kali-linux-core kali-desktop-xfce kali-tools-top10 python3-pip python3-pyftpdlib
+
+      useradd -m -s /bin/bash attacker
+      echo "attacker:ATT&CK" | chpasswd
+      usermod -a attacker -G kali-trusted
+
+      echo "attacker ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/attacker
+      chmod 0440 /etc/sudoers.d/attacker
+
+      python3 -m pip install -Iv pylnk3==0.4.2
+
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service
+
+      git clone https://github.com/maddev-engenuity/AdversaryEmulation.git /home/attacker/AdversaryEmulation
+      chown -R attacker:attacker /home/attacker/AdversaryEmulation
+    POSTBUILD_APT_CLEANUP: |
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+        echo \$file
+        bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      echo "phenix" > /etc/hostname
+      sed -i '2i 127.0.1.1\tphenix' /etc/hosts
+      echo "\nBuilt with love using phenix on $(date)\n\n" >> /etc/motd
+  size: 10G
+  variant: minbase
