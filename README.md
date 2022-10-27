@@ -1,5 +1,8 @@
 # MAD ATT&CK Adversary Emulation Lab Environment
 
+> **This repository has been archived. Further updates to the MAD Adversary
+> Emulation Lab will be made [here](https://github.com/activeshadow/phenix-projects/tree/main/mad-emu-lab).**
+
 Module 1 of the free Cybrary [MITRE ATT&CK Defender ATT&CK Adversary Emulation
 training course](https://app.cybrary.it/browse/course/mitre-attack-adversary-emulation-fundamentals)
 includes a lab component that either requires students to setup their own lab
